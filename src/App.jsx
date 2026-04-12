@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getWeatherInfo, getWindDirection, getDayName, formatLocation } from './utils/weather'
+import { getWeatherInfo, getWindDirection, getDayName, formatLocation, getUvInfo, getLocalTime, formatUpdatedAt } from './utils/weather'
 import './App.css'
 
 // ── Caché en memoria (tarea 10) ──────────────────────────
@@ -210,7 +210,15 @@ export default function App() {
 
         {weather && !loading && (
           <main className="dashboard">
-            <p className="location-name">📍 {formatLocation(weather.location)}</p>
+            {/* Ubicación + hora local + última actualización (tareas 13 y 14) */}
+            <div className="location-bar">
+              <span className="location-name">📍 {formatLocation(weather.location)}</span>
+              <span className="location-meta">
+                🕐 {getLocalTime(weather.timezone)}
+                <span className="separator">·</span>
+                Actualizado a las {formatUpdatedAt(weather.current.time, weather.timezone)}
+              </span>
+            </div>
 
             <div
               className="main-card"
@@ -241,11 +249,18 @@ export default function App() {
                   {Math.round(current.wind_speed_10m)} km/h {getWindDirection(current.wind_direction_10m)}
                 </span>
               </div>
-              <div className="metric-card" aria-label={`Índice UV: ${Math.round(current.uv_index ?? 0)}`}>
-                <span className="metric-icon" aria-hidden="true">🔆</span>
-                <span className="metric-label">Índice UV</span>
-                <span className="metric-value">{Math.round(current.uv_index ?? 0)}</span>
-              </div>
+              {(() => {
+                const uv = Math.round(current.uv_index ?? 0)
+                const uvInfo = getUvInfo(uv)
+                return (
+                  <div className="metric-card" aria-label={`Índice UV: ${uv}, riesgo ${uvInfo.label}`}>
+                    <span className="metric-icon" aria-hidden="true">🔆</span>
+                    <span className="metric-label">Índice UV</span>
+                    <span className="metric-value">{uv}</span>
+                    <span className="uv-badge" style={{ color: uvInfo.color }}>{uvInfo.label}</span>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="forecast">
