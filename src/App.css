@@ -103,6 +103,74 @@ header h1 {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Search history pills (tarea 9) ──────────────────── */
+.search-history {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.history-pill {
+  padding: 0.3rem 0.85rem;
+  border-radius: 50px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background 0.2s, color 0.2s;
+}
+.history-pill:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--text);
+}
+
+/* ── City suggestions / disambiguation (tarea 11) ─────── */
+.suggestions-box {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.suggestions-title {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.4rem;
+}
+
+.suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.suggestion-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--glass-border);
+}
+
+.suggestion-name   { font-size: 0.95rem; font-weight: 500; }
+.suggestion-detail { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+
 /* ── Error message ────────────────────────────────────── */
 .error-msg {
   background: rgba(239, 68, 68, 0.18);
