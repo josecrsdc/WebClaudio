@@ -42,3 +42,30 @@ export function getDayName(dateStr) {
 export function formatLocation(displayName) {
   return displayName.split(',').slice(0, 3).join(',').trim()
 }
+
+// ── UV index risk levels (tarea 12) ─────────────────────
+export function getUvInfo(uv) {
+  if (uv <= 2)  return { label: 'Bajo',     color: '#4caf50' }
+  if (uv <= 5)  return { label: 'Moderado', color: '#ffeb3b' }
+  if (uv <= 7)  return { label: 'Alto',     color: '#ff9800' }
+  if (uv <= 10) return { label: 'Muy alto', color: '#f44336' }
+  return          { label: 'Extremo',   color: '#9c27b0' }
+}
+
+// ── Local time in city timezone (tarea 13) ───────────────
+export function getLocalTime(timezone) {
+  return new Date().toLocaleTimeString('es-ES', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// ── Format last-updated timestamp (tarea 14) ────────────
+export function formatUpdatedAt(isoTime, timezone) {
+  return new Date(isoTime).toLocaleTimeString('es-ES', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}

@@ -194,16 +194,42 @@ header h1 {
 }
 .placeholder-emoji { font-size: 4.5rem; }
 
+/* ── Location bar (tareas 13 y 14) ───────────────────── */
+.location-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.location-name {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.location-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.separator { opacity: 0.5; }
+
+/* ── UV badge (tarea 12) ──────────────────────────────── */
+.uv-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* ── Dashboard ────────────────────────────────────────── */
 .dashboard { animation: fadeIn 0.4s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
-
-.location-name {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  margin-bottom: 1.25rem;
-}
 
 /* Main weather card */
 .main-card {
@@ -313,6 +339,8 @@ header h1 {
 
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 640px) {
+  .container { padding: 1.5rem 1rem 2rem; }
+
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
 
   .main-card {
@@ -324,8 +352,38 @@ header h1 {
 
   .weather-emoji, .temperature { font-size: 4rem; }
 
-  .forecast-day {
-    grid-template-columns: 1fr 2rem 3rem auto;
-    gap: 0.6rem;
+  /* Tarea 18: área táctil mínima 44px en móvil */
+  .search-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1.25rem;
   }
+
+  .search-input { min-height: 44px; }
+
+  /* Tarea 17: forecast legible en móvil */
+  .forecast { padding: 1.25rem 1rem; }
+
+  .forecast-day {
+    grid-template-columns: 1fr 1.8rem 2.8rem auto;
+    gap: 0.5rem;
+    padding: 0.65rem 0;
+  }
+
+  .day-name  { font-size: 0.88rem; }
+  .day-rain  { font-size: 0.78rem; }
+  .day-max, .day-min { font-size: 0.88rem; }
+  .day-temps { min-width: 52px; gap: 0.4rem; }
+}
+
+/* Tarea 17: pantallas muy pequeñas (320px) */
+@media (max-width: 380px) {
+  .container { padding: 1rem 0.75rem 1.5rem; }
+
+  header h1 { font-size: 1.6rem; }
+
+  .search-form { gap: 0.4rem; }
+
+  .location-meta { flex-direction: column; gap: 0.1rem; }
+  .separator { display: none; }
 }
