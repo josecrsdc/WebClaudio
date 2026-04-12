@@ -17,10 +17,24 @@ function saveHistory(list) {
 
 // ── Fetch geo: devuelve hasta 5 resultados (tarea 11) ────
 async function fetchGeoSuggestions(locationName) {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationName)}&format=json&limit=5`,
-    { headers: { 'Accept-Language': 'es' } }
-  ).catch(() => { throw new Error('Sin conexión a Internet. Comprueba tu red.') })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+
+  let res
+  try {
+    res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationName)}&format=json&limit=5`,
+      { headers: { 'Accept-Language': 'es' }, signal: controller.signal }
+    )
+  } catch (e) {
+    throw new Error(e.name === 'AbortError'
+      ? 'La búsqueda tardó demasiado. Comprueba tu conexión.'
+      : 'Sin conexión a Internet. Comprueba tu red.')
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  if (!res.ok) throw new Error(`Error del servicio de geocodificación (${res.status}). Inténtalo de nuevo.`)
 
   const data = await res.json().catch(() => {
     throw new Error('Respuesta inesperada al buscar la ciudad. Inténtalo de nuevo.')
@@ -32,27 +46,45 @@ async function fetchGeoSuggestions(locationName) {
   return data
 }
 
-// ── Fetch weather con caché ──────────────────────────────
+// ── Fetch weather con caché y validación (tareas 15-16) ──
 async function fetchWeatherForLocation(lat, lon, displayName) {
   const cacheKey = `${parseFloat(lat).toFixed(2)},${parseFloat(lon).toFixed(2)}`
   const cached = weatherCache.get(cacheKey)
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data
 
-  const weatherRes = await fetch(
-    `https://api.open-meteo.com/v1/forecast` +
-    `?latitude=${lat}&longitude=${lon}` +
-    `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,uv_index` +
-    `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
-    `&timezone=auto`
-  ).catch(() => { throw new Error('Sin conexión a Internet. Comprueba tu red.') })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+
+  let weatherRes
+  try {
+    weatherRes = await fetch(
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,uv_index` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+      `&timezone=auto`,
+      { signal: controller.signal }
+    )
+  } catch (e) {
+    throw new Error(e.name === 'AbortError'
+      ? 'La petición meteorológica tardó demasiado. Inténtalo de nuevo.'
+      : 'Sin conexión a Internet. Comprueba tu red.')
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!weatherRes.ok) {
-    throw new Error('El servicio meteorológico no está disponible. Inténtalo en unos minutos.')
+    throw new Error(`El servicio meteorológico no está disponible (${weatherRes.status}). Inténtalo en unos minutos.`)
   }
 
   const weatherData = await weatherRes.json().catch(() => {
     throw new Error('Error al leer los datos meteorológicos. Inténtalo de nuevo.')
   })
+
+  // Validación de estructura mínima (tarea 15)
+  if (!weatherData?.current || !weatherData?.daily?.time?.length) {
+    throw new Error('Los datos recibidos están incompletos. Inténtalo de nuevo.')
+  }
 
   const result = { location: displayName, ...weatherData }
   weatherCache.set(cacheKey, { data: result, ts: Date.now() })
