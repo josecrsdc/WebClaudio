@@ -9,7 +9,7 @@
   --glass:        rgba(255, 255, 255, 0.10);
   --glass-border: rgba(255, 255, 255, 0.18);
   --text:         #ffffff;
-  --text-muted:   rgba(255, 255, 255, 0.65);
+  --text-muted:   rgba(255, 255, 255, 0.82);
   --radius:       18px;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -24,9 +24,9 @@
 }
 .app.clear  { background: linear-gradient(145deg, #1565c0 0%, #0d47a1 50%, #01579b 100%); }
 .app.cloudy { background: linear-gradient(145deg, #455a64 0%, #37474f 50%, #263238 100%); }
-.app.rain   { background: linear-gradient(145deg, #1a237e 0%, #283593 50%, #0d47a1 100%); }
+.app.rain   { background: linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%); }
 .app.snow   { background: linear-gradient(145deg, #4a6fa5 0%, #3d5a87 50%, #2c4369 100%); }
-.app.storm  { background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+.app.storm  { background: linear-gradient(145deg, #1a0533 0%, #2d1b69 50%, #0d001a 100%); }
 
 /* ── Layout container ─────────────────────────────────── */
 .container {
@@ -211,7 +211,7 @@ header h1 {
 }
 
 .forecast h2 {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-muted);
