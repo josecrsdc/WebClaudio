@@ -103,13 +103,28 @@ header h1 {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Search history pills (tarea 9) ──────────────────── */
-.search-history {
+/* ── Pills area: recientes + favoritos (tareas 9, 21) ─── */
+.pills-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.pills-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.pills-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 0.2rem;
 }
 
 .history-pill {
@@ -127,6 +142,130 @@ header h1 {
   background: rgba(255, 255, 255, 0.22);
   color: var(--text);
 }
+.fav-pill {
+  border-color: rgba(255, 215, 0, 0.35);
+}
+.fav-pill:hover {
+  border-color: rgba(255, 215, 0, 0.6);
+}
+
+/* ── Favorite star button (tarea 21) ─────────────────── */
+.location-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.2s, transform 0.15s;
+  padding: 0;
+}
+.fav-btn:hover  { opacity: 1; transform: scale(1.2); }
+.fav-btn--active { opacity: 1; }
+
+/* ── Alert banner (tarea 19) ─────────────────────────── */
+.alert-banner {
+  border-radius: var(--radius);
+  padding: 0.9rem 1.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+}
+.alert-danger  {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+.alert-warning {
+  background: rgba(251, 146, 60, 0.2);
+  border: 1px solid rgba(251, 146, 60, 0.45);
+}
+.alert-cold {
+  background: rgba(96, 165, 250, 0.2);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+}
+
+/* ── Hourly forecast (tarea 20) ──────────────────────── */
+.hourly-section {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.hourly-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.hourly-toggle:hover { background: rgba(255,255,255,0.06); }
+.toggle-arrow { font-size: 0.7rem; color: var(--text-muted); }
+
+.hourly-list {
+  display: flex;
+  overflow-x: auto;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+.hourly-list::-webkit-scrollbar { height: 4px; }
+.hourly-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+.hourly-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 52px;
+  padding: 0.6rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.hourly-time  { font-size: 0.75rem; color: var(--text-muted); }
+.hourly-emoji { font-size: 1.25rem; }
+.hourly-temp  { font-size: 0.88rem; font-weight: 600; }
+.hourly-rain  { font-size: 0.72rem; color: #90caf9; }
+
+/* ── Attribution footer (tarea 22) ──────────────────── */
+.attribution {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.attribution a {
+  color: rgba(255,255,255,0.75);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.attribution a:hover { color: #fff; }
 
 /* ── City suggestions / disambiguation (tarea 11) ─────── */
 .suggestions-box {

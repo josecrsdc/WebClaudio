@@ -43,7 +43,27 @@ export function formatLocation(displayName) {
   return displayName.split(',').slice(0, 3).join(',').trim()
 }
 
-// ── UV index risk levels (tarea 12) ─────────────────────
+// ── Alert banner for extreme conditions (tarea 19) ──────
+export function getAlert(current) {
+  const temp = current.temperature_2m
+  const wind = current.wind_speed_10m
+  const code = current.weather_code
+
+  if ([95, 96, 99].includes(code))
+    return { msg: '⚡ Tormenta activa. Evita zonas descubiertas y busca refugio.', level: 'danger' }
+  if (temp >= 40)
+    return { msg: `🌡️ Calor extremo: ${Math.round(temp)}°C. Mantente hidratado y a la sombra.`, level: 'warning' }
+  if (temp <= -10)
+    return { msg: `🥶 Frío extremo: ${Math.round(temp)}°C. Abrígate bien y evita la exposición.`, level: 'cold' }
+  if (wind >= 80)
+    return { msg: `💨 Viento muy fuerte: ${Math.round(wind)} km/h. Precaución en exteriores.`, level: 'warning' }
+  return null
+}
+
+// ── Format hour label from hourly time string (tarea 20) ─
+export function formatHour(isoTimeStr) {
+  return isoTimeStr.slice(11, 16) // "2024-01-15T14:00" → "14:00"
+}
 export function getUvInfo(uv) {
   if (uv <= 2)  return { label: 'Bajo',     color: '#4caf50' }
   if (uv <= 5)  return { label: 'Moderado', color: '#ffeb3b' }
