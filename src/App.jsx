@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning,
   MapPin, Clock, Star, Globe, Sunrise, Sunset, Leaf, Droplets, Thermometer, Wind, Zap,
+  Trophy, X, Flame, Snowflake,
 } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
@@ -25,9 +26,61 @@ L.Icon.Default.mergeOptions({
 })
 
 // ── Caché en memoria ─────────────────────────────────────
-const weatherCache = new Map()
-const aqiCache     = new Map()
-const CACHE_TTL    = 10 * 60 * 1000
+const weatherCache  = new Map()
+const aqiCache      = new Map()
+const gameCityCache = new Map()
+const CACHE_TTL      = 10 * 60 * 1000
+const GAME_CACHE_TTL =  5 * 60 * 1000
+
+// ── Game city pool (20 ciudades) ─────────────────────────
+const CITIES = [
+  { name: 'Dubai',            lat:  25.2048,  lon:   55.2708  },
+  { name: 'Tokio',            lat:  35.6762,  lon:  139.6503  },
+  { name: 'Nueva York',       lat:  40.7128,  lon:  -74.0060  },
+  { name: 'Londres',          lat:  51.5074,  lon:   -0.1278  },
+  { name: 'Madrid',           lat:  40.4168,  lon:   -3.7038  },
+  { name: 'Sydney',           lat: -33.8688,  lon:  151.2093  },
+  { name: 'Moscú',            lat:  55.7558,  lon:   37.6173  },
+  { name: 'Ciudad de México', lat:  19.4326,  lon:  -99.1332  },
+  { name: 'Bangkok',          lat:  13.7563,  lon:  100.5018  },
+  { name: 'Lagos',            lat:   6.5244,  lon:    3.3792  },
+  { name: 'Buenos Aires',     lat: -34.6037,  lon:  -58.3816  },
+  { name: 'Oslo',             lat:  59.9139,  lon:   10.7522  },
+  { name: 'Nairobi',          lat:  -1.2921,  lon:   36.8219  },
+  { name: 'Reikiavik',        lat:  64.1466,  lon:  -21.9426  },
+  { name: 'Singapur',         lat:   1.3521,  lon:  103.8198  },
+  { name: 'El Cairo',         lat:  30.0444,  lon:   31.2357  },
+  { name: 'Mumbai',           lat:  19.0760,  lon:   72.8777  },
+  { name: 'Seattle',          lat:  47.6062,  lon: -122.3321  },
+  { name: 'Helsinki',         lat:  60.1699,  lon:   24.9384  },
+  { name: 'Río de Janeiro',   lat: -22.9068,  lon:  -43.1729  },
+]
+
+async function fetchGameCityData(city) {
+  const cached = gameCityCache.get(city.name)
+  if (cached && Date.now() - cached.ts < GAME_CACHE_TTL) return cached.data
+  try {
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}` +
+      `&current=temperature_2m,weather_code&timezone=auto`
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data?.current?.temperature_2m == null) return null
+    const result = { temp: data.current.temperature_2m, code: data.current.weather_code }
+    gameCityCache.set(city.name, { data: result, ts: Date.now() })
+    return result
+  } catch { return null }
+}
+
+function shuffleArray(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 // ── localStorage helpers ─────────────────────────────────
 function loadHistory() {
@@ -256,6 +309,159 @@ function WeatherMap({ lat, lon, cityName }) {
   )
 }
 
+// ── WeatherGame component ─────────────────────────────────
+function WeatherGame({ onClose }) {
+  const TOTAL_ROUNDS = 10
+  const [phase, setPhase]     = useState('idle')
+  const [cityA, setCityA]     = useState(null)
+  const [cityB, setCityB]     = useState(null)
+  const [dataA, setDataA]     = useState(null)
+  const [dataB, setDataB]     = useState(null)
+  const [score, setScore]     = useState(0)
+  const [round, setRound]     = useState(0)
+  const [results, setResults] = useState([])
+  const cityQueueRef          = useRef([])
+
+  const loadRound = async (a, b) => {
+    setPhase('loading')
+    setCityA(a); setCityB(b)
+    const [dA, dB] = await Promise.all([fetchGameCityData(a), fetchGameCityData(b)])
+    setDataA(dA); setDataB(dB)
+    setPhase('playing')
+  }
+
+  const startGame = () => {
+    const shuffled = shuffleArray(CITIES)
+    cityQueueRef.current = shuffled.slice(2)
+    setScore(0); setRound(1); setResults([])
+    loadRound(shuffled[0], shuffled[1])
+  }
+
+  const handleGuess = (chosen) => {
+    if (phase !== 'playing') return
+    const tempA = dataA?.temp ?? -999
+    const tempB = dataB?.temp ?? -999
+    const correct = (chosen === 'A' && tempA >= tempB) || (chosen === 'B' && tempB > tempA)
+    setScore(s => s + (correct ? 1 : 0))
+    setResults(r => [...r, correct])
+    setPhase('revealed')
+  }
+
+  const handleNext = () => {
+    const queue = cityQueueRef.current
+    const newRound = round + 1
+    if (newRound > TOTAL_ROUNDS || queue.length < 2) { setPhase('finished'); return }
+    const [a, b, ...rest] = queue
+    cityQueueRef.current = rest
+    setRound(newRound)
+    loadRound(a, b)
+  }
+
+  const getRating = (s) => {
+    if (s >= 9) return { label: 'Experto climatológico', sub: '¡Increíble precisión!', icon: <Trophy  size={52} strokeWidth={1.2} style={{ color: '#FFD700' }} /> }
+    if (s >= 7) return { label: 'Meteorólogo en ciernes', sub: '¡Muy buen trabajo!',   icon: <Star    size={52} strokeWidth={1.2} style={{ color: '#FFD700', fill: 'rgba(255,215,0,0.3)' }} /> }
+    if (s >= 5) return { label: 'Aficionado al tiempo',  sub: 'Puedes hacerlo mejor',  icon: <CloudSun size={52} strokeWidth={1.2} style={{ color: '#90caf9' }} /> }
+    return       { label: 'Principiante',               sub: 'Sigue practicando',       icon: <Leaf    size={52} strokeWidth={1.2} style={{ color: '#66bb6a' }} /> }
+  }
+
+  const rating = phase === 'finished' ? getRating(score) : null
+
+  return (
+    <div className="game-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Juego ¿Cuál hace más calor?">
+      <div className="game-modal" onClick={e => e.stopPropagation()}>
+        <button className="game-close" onClick={onClose} aria-label="Cerrar juego">
+          <X size={18} />
+        </button>
+
+        <h2 className="game-title">¿Cuál hace más calor?</h2>
+        <p className="game-subtitle">Adivina cuál de las dos ciudades tiene mayor temperatura ahora mismo</p>
+
+        {phase === 'idle' && (
+          <div className="game-idle">
+            <div className="game-idle-icon"><Trophy size={64} strokeWidth={1} /></div>
+            <p className="game-idle-text">10 rondas · Ciudades reales · Datos en tiempo real</p>
+            <button className="game-start-btn" onClick={startGame}>¡Jugar!</button>
+          </div>
+        )}
+
+        {phase === 'loading' && (
+          <div className="game-loading">
+            <span className="spinner" aria-hidden="true" />
+            <p>Consultando temperaturas...</p>
+          </div>
+        )}
+
+        {(phase === 'playing' || phase === 'revealed') && cityA && cityB && (
+          <>
+            <div className="game-progress">
+              <span className="game-round">Ronda {round}/{TOTAL_ROUNDS}</span>
+              <div className="game-dots">
+                {results.map((r, i) => (
+                  <span key={i} className={`game-dot ${r ? 'game-dot--correct' : 'game-dot--wrong'}`} />
+                ))}
+                {Array.from({ length: TOTAL_ROUNDS - results.length }).map((_, i) => (
+                  <span key={`e${i}`} className="game-dot game-dot--empty" />
+                ))}
+              </div>
+              <span className="game-score-inline">{score}/{results.length}</span>
+            </div>
+
+            <div className="game-cards">
+              {[{ key: 'A', city: cityA, data: dataA }, { key: 'B', city: cityB, data: dataB }].map(({ key, city, data }) => {
+                const tempA = dataA?.temp ?? -999
+                const tempB = dataB?.temp ?? -999
+                const isWarmer = key === 'A' ? tempA >= tempB : tempB > tempA
+                let cardClass = 'game-card'
+                if (phase === 'revealed') cardClass += isWarmer ? ' game-card--correct' : ' game-card--wrong'
+                return (
+                  <button key={key} type="button" className={cardClass} onClick={() => handleGuess(key)} disabled={phase === 'revealed'}>
+                    <span className="game-city-label">{city.name}</span>
+                    <WeatherIcon name={data ? getWeatherInfo(data.code).icon : 'Cloud'} size={36} className="game-weather-icon" />
+                    {phase === 'revealed' && data && (
+                      <span className="game-temp-reveal">{Math.round(data.temp)}°C</span>
+                    )}
+                    {phase === 'revealed' && (
+                      isWarmer
+                        ? <Flame     size={18} style={{ color: '#ff7043' }} />
+                        : <Snowflake size={18} style={{ color: '#90caf9' }} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {phase === 'revealed' && (
+              <div className="game-feedback">
+                <span className={results[results.length - 1] ? 'game-feedback--correct' : 'game-feedback--wrong'}>
+                  {results[results.length - 1] ? '¡Correcto!' : 'Incorrecto'}
+                </span>
+                <button className="game-next-btn" onClick={handleNext}>
+                  {round < TOTAL_ROUNDS ? 'Siguiente →' : 'Ver resultado'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {phase === 'finished' && rating && (
+          <div className="game-finished">
+            <div className="game-finish-score">{score}<span>/{TOTAL_ROUNDS}</span></div>
+            <div className="game-rating-icon">{rating.icon}</div>
+            <div className="game-rating-label">{rating.label}</div>
+            <div className="game-rating-sub">{rating.sub}</div>
+            <div className="game-dots game-dots--final">
+              {results.map((r, i) => (
+                <span key={i} className={`game-dot ${r ? 'game-dot--correct' : 'game-dot--wrong'}`} />
+              ))}
+            </div>
+            <button className="game-start-btn" onClick={startGame}>Jugar de nuevo</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Filter config ─────────────────────────────────────────
 const NEARBY_FILTERS = [
   { key: 'all',   label: 'Todos' },
@@ -284,6 +490,7 @@ export default function App() {
   const [nearbyWeather, setNearbyWeather] = useState([])
   const [nearbyLoading, setNearbyLoading] = useState(false)
   const [nearbyFilter, setNearbyFilter]   = useState('all')
+  const [gameOpen, setGameOpen]           = useState(false)
   const nearbyGenRef = useRef(0)
 
   // ── History ──────────────────────────────────────────
@@ -431,7 +638,13 @@ export default function App() {
       <div className="container">
 
         <header>
-          <h1>WeatherBoard</h1>
+          <div className="header-top">
+            <h1>WeatherBoard</h1>
+            <button type="button" className="game-btn" onClick={() => setGameOpen(true)} aria-label="Abrir juego climatológico">
+              <Trophy size={16} strokeWidth={1.5} />
+              Jugar
+            </button>
+          </div>
           <form onSubmit={handleSearch} className="search-form">
             <input
               type="text"
@@ -719,6 +932,8 @@ export default function App() {
         </footer>
 
       </div>
+
+      {gameOpen && <WeatherGame onClose={() => setGameOpen(false)} />}
     </div>
   )
 }

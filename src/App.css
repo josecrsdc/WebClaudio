@@ -1034,3 +1034,287 @@ header h1 {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   GAME — ¿Cuál hace más calor?
+═══════════════════════════════════════════════════════ */
+
+/* ── Header game button ───────────────────────────────── */
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.header-top h1 { margin-bottom: 0; }
+
+.game-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.07);
+  color: rgba(255, 215, 0, 0.9);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.game-btn:hover {
+  background: rgba(255, 215, 0, 0.17);
+  border-color: rgba(255, 215, 0, 0.6);
+}
+
+/* ── Overlay & modal ──────────────────────────────────── */
+.game-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.game-modal {
+  background: linear-gradient(145deg, rgba(18, 28, 58, 0.98) 0%, rgba(8, 16, 36, 0.98) 100%);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 2rem 1.75rem 1.75rem;
+  max-width: 480px;
+  width: 100%;
+  position: relative;
+  max-height: 92svh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+.game-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.game-close:hover { background: rgba(255, 255, 255, 0.18); color: var(--text); }
+
+.game-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.35rem;
+}
+
+.game-subtitle {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.45;
+  margin-bottom: 1.75rem;
+}
+
+/* ── Idle screen ──────────────────────────────────────── */
+.game-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0 1rem;
+}
+.game-idle-icon { color: #FFD700; opacity: 0.9; }
+.game-idle-text {
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.65;
+  font-size: 0.88rem;
+}
+
+/* ── Loading ──────────────────────────────────────────── */
+.game-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Progress row ─────────────────────────────────────── */
+.game-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 1.1rem;
+}
+.game-round {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.game-dots {
+  display: flex;
+  gap: 0.28rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.game-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+.game-dot--correct { background: #4caf50; }
+.game-dot--wrong   { background: #ef5350; }
+.game-dot--empty   { background: rgba(255, 255, 255, 0.13); }
+.game-score-inline {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── City cards ───────────────────────────────────────── */
+.game-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.game-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  padding: 1.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  color: var(--text);
+  min-height: 148px;
+  transition: background 0.2s, border-color 0.2s, transform 0.18s;
+}
+.game-card:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-3px);
+}
+.game-card:disabled { cursor: default; }
+
+.game-card--correct {
+  background: rgba(76, 175, 80, 0.16) !important;
+  border-color: rgba(76, 175, 80, 0.5) !important;
+}
+.game-card--wrong {
+  background: rgba(239, 83, 80, 0.13) !important;
+  border-color: rgba(239, 83, 80, 0.38) !important;
+}
+
+.game-city-label {
+  font-size: 0.97rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+.game-weather-icon { opacity: 0.75; }
+
+.game-temp-reveal {
+  font-size: 1.9rem;
+  font-weight: 200;
+  line-height: 1;
+  animation: temp-reveal 0.35s ease both;
+}
+@keyframes temp-reveal {
+  from { opacity: 0; transform: scale(0.65); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Feedback row ─────────────────────────────────────── */
+.game-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.game-feedback--correct { font-weight: 700; color: #66bb6a; font-size: 1rem; }
+.game-feedback--wrong   { font-weight: 700; color: #ef5350; font-size: 1rem; }
+
+.game-next-btn {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 50px;
+  padding: 0.5rem 1.2rem;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.game-next-btn:hover { background: rgba(255, 255, 255, 0.26); }
+
+/* ── Start / restart button ───────────────────────────── */
+.game-start-btn {
+  background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+  border: none;
+  border-radius: 50px;
+  padding: 0.85rem 2.5rem;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 0.25rem;
+}
+.game-start-btn:hover  { opacity: 0.88; }
+.game-start-btn:active { transform: scale(0.97); }
+
+/* ── Finished screen ──────────────────────────────────── */
+.game-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.25rem 0 0.5rem;
+}
+.game-finish-score {
+  font-size: 4rem;
+  font-weight: 200;
+  line-height: 1;
+}
+.game-finish-score span { font-size: 2rem; color: var(--text-muted); }
+.game-rating-icon  { margin: 0.15rem 0; }
+.game-rating-label { font-size: 1.25rem; font-weight: 700; text-align: center; }
+.game-rating-sub   { font-size: 0.88rem; color: var(--text-muted); }
+.game-dots--final  { justify-content: center; max-width: 260px; }
+
+/* ── Game responsive ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .header-top { flex-wrap: wrap; gap: 0.5rem; }
+  .game-modal { padding: 1.5rem 1.1rem 1.5rem; border-radius: 18px; }
+  .game-cards { gap: 0.65rem; }
+  .game-city-label  { font-size: 0.86rem; }
+  .game-temp-reveal { font-size: 1.55rem; }
+  .game-card        { min-height: 130px; padding: 1.1rem 0.6rem; }
+}
+@media (max-width: 380px) {
+  .game-title { font-size: 1.1rem; }
+  .game-card  { min-height: 112px; }
+}
