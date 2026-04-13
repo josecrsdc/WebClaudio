@@ -1,16 +1,38 @@
-# React + Vite
+# WeatherBoard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web en React + Vite para consultar el tiempo, calidad del aire y previsiones con datos en tiempo real de Open‑Meteo y geocodificación de Nominatim (OpenStreetMap). Incluye un minijuego y vista de ubicaciones cercanas.
 
-Currently, two official plugins are available:
+## Características
+- Búsqueda de ciudades con sugerencias y selección rápida de recientes/favoritos (persisten en `localStorage`).
+- Panel principal: estado actual, sensación térmica, humedad, viento con dirección, índice UV, amanecer/atardecer.
+- Calidad del aire (US AQI) con barra de intensidad.
+- Próximas 24h (lista expandible) y gráfico de temperatura/lluvia (Recharts).
+- Previsión 7 días con iconos WMO.
+- Mapa interactivo (Leaflet) centrado en la ubicación buscada.
+- “Tiempo en los alrededores”: calcula 8 puntos a ~80 km y permite abrir uno como nueva ubicación con filtros por condición.
+- Minijuego “¿Cuál hace más calor?”: 10 rondas comparando ciudades reales con datos en vivo.
+- Caché en memoria para meteo/AQI y control básico de errores y timeouts.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Requisitos
+- Node.js 18+ (probado con 20.11.0).
 
-## React Compiler
+## Puesta en marcha
+```bash
+npm install
+npm run dev
+```
+Abre http://localhost:5173
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts disponibles
+- `npm run dev` – servidor de desarrollo con HMR.
+- `npm run build` – build de producción.
+- `npm run preview` – sirve la build localmente.
+- `npm run lint` – ESLint.
 
-## Expanding the ESLint configuration
+## Fuentes de datos
+- Meteo y AQI: [Open‑Meteo](https://open-meteo.com)
+- Geocodificación: [Nominatim / OpenStreetMap](https://nominatim.openstreetmap.org)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Notas de diseño
+- Interfaz en español, paleta adaptada según condición (despejado/nublado/lluvia/nieve/tormenta).
+- Íconos de clima de Lucide, mapa Leaflet con fijación de assets para Vite.
