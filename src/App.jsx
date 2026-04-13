@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning,
   MapPin, Clock, Star, Globe, Sunrise, Sunset, Leaf, Droplets, Thermometer, Wind, Zap,
@@ -142,10 +142,39 @@ async function loadWeatherAndAqi(lat, lon, displayName) {
   }
 }
 
-// ── Weather icon component ────────────────────────────────
-const W_ICONS = {
-  Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning,
+// ── Nearby helpers (module level) ────────────────────────
+function getNearbyPoints(lat, lon) {
+  const latRad = lat * Math.PI / 180
+  const dLat = 80 / 111
+  const dLon = 80 / (111 * Math.cos(latRad))
+  const d45  = dLat / Math.SQRT2
+  const d45L = dLon / Math.SQRT2
+  return [
+    { lat: lat + dLat, lon,           dir: 'N'  },
+    { lat: lat + d45,  lon: lon+d45L, dir: 'NE' },
+    { lat,             lon: lon+dLon, dir: 'E'  },
+    { lat: lat - d45,  lon: lon+d45L, dir: 'SE' },
+    { lat: lat - dLat, lon,           dir: 'S'  },
+    { lat: lat - d45,  lon: lon-d45L, dir: 'SO' },
+    { lat,             lon: lon-dLon, dir: 'O'  },
+    { lat: lat + d45,  lon: lon-d45L, dir: 'NO' },
+  ]
 }
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&zoom=10`,
+      { headers: { 'Accept-Language': 'es' } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.address?.city || data.address?.town || data.address?.village || data.address?.county || null
+  } catch { return null }
+}
+
+// ── Weather icon component ────────────────────────────────
+const W_ICONS = { Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning }
 function WeatherIcon({ name, size = 24, className = '' }) {
   const I = W_ICONS[name] ?? Cloud
   return <I size={size} className={className} strokeWidth={1.5} />
@@ -195,23 +224,11 @@ function TempChart({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis
-              dataKey="hour"
-              tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              interval={3}
-            />
-            <YAxis
-              domain={[minTemp, maxTemp]}
-              tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={v => `${v}°`}
-            />
+            <XAxis dataKey="hour" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }} tickLine={false} axisLine={false} interval={3} />
+            <YAxis domain={[minTemp, maxTemp]} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `${v}°`} />
             <Tooltip content={<ChartTooltip />} />
-            <Area type="monotone" dataKey="temp"  stroke="rgba(255,255,255,0.9)" strokeWidth={2}   fill="url(#tempGrad)" name="Temp"   />
-            <Area type="monotone" dataKey="rain"  stroke="rgba(100,160,255,0.8)" strokeWidth={1.5} fill="url(#rainGrad)" name="Lluvia" />
+            <Area type="monotone" dataKey="temp" stroke="rgba(255,255,255,0.9)" strokeWidth={2}   fill="url(#tempGrad)" name="Temp"   />
+            <Area type="monotone" dataKey="rain" stroke="rgba(100,160,255,0.8)" strokeWidth={1.5} fill="url(#rainGrad)" name="Lluvia" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -225,13 +242,7 @@ function WeatherMap({ lat, lon, cityName }) {
     <div className="map-section">
       <h2>Ubicación</h2>
       <div className="map-wrapper">
-        <MapContainer
-          key={`${lat},${lon}`}
-          center={[lat, lon]}
-          zoom={11}
-          scrollWheelZoom={false}
-          className="leaflet-map"
-        >
+        <MapContainer key={`${lat},${lon}`} center={[lat, lon]} zoom={11} scrollWheelZoom={false} className="leaflet-map">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -245,6 +256,20 @@ function WeatherMap({ lat, lon, cityName }) {
   )
 }
 
+// ── Filter config ─────────────────────────────────────────
+const NEARBY_FILTERS = [
+  { key: 'all',   label: 'Todos' },
+  { key: 'clear', label: 'Despejado',  icon: 'Sun'            },
+  { key: 'cloudy',label: 'Nublado',    icon: 'Cloud'          },
+  { key: 'rain',  label: 'Lluvia',     icon: 'CloudRain'      },
+  { key: 'snow',  label: 'Nieve',      icon: 'CloudSnow'      },
+  { key: 'storm', label: 'Tormenta',   icon: 'CloudLightning' },
+]
+const FILTER_EMPTY = {
+  all: 'tiempo cercano', clear: 'cielo despejado', cloudy: 'cielo nublado',
+  rain: 'lluvia', snow: 'nieve', storm: 'tormentas',
+}
+
 // ────────────────────────────────────────────────────────
 export default function App() {
   const [query, setQuery]             = useState('')
@@ -256,12 +281,18 @@ export default function App() {
   const [history, setHistory]         = useState(loadHistory)
   const [favorites, setFavorites]     = useState(loadFavorites)
   const [hourlyOpen, setHourlyOpen]   = useState(false)
+  const [nearbyWeather, setNearbyWeather] = useState([])
+  const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [nearbyFilter, setNearbyFilter]   = useState('all')
+  const nearbyGenRef = useRef(0)
 
+  // ── History ──────────────────────────────────────────
   const addToHistory = (cityName) => {
     const next = [cityName, ...history.filter(h => h !== cityName)].slice(0, 5)
     setHistory(next); saveHistory(next)
   }
 
+  // ── Favorites ────────────────────────────────────────
   const isFavorite = (lat, lon) =>
     favorites.some(f => f.lat === String(lat) && f.lon === String(lon))
 
@@ -287,6 +318,7 @@ export default function App() {
     finally { setLoading(false) }
   }
 
+  // ── Search ───────────────────────────────────────────
   const applyWeather = (data, aqiData, cityLabel) => {
     setWeather(data); setAqi(aqiData); addToHistory(cityLabel); setQuery(''); setSuggestions([])
     setHourlyOpen(false)
@@ -319,6 +351,57 @@ export default function App() {
     finally { setLoading(false) }
   }
 
+  // ── Nearby weather ───────────────────────────────────
+  const fetchNearbyWeather = async (lat, lon) => {
+    const gen = ++nearbyGenRef.current
+    setNearbyWeather([])
+    setNearbyLoading(true)
+    setNearbyFilter('all')
+
+    const points = getNearbyPoints(lat, lon)
+    const results = await Promise.allSettled(
+      points.map(p => fetchWeatherForLocation(p.lat.toFixed(4), p.lon.toFixed(4), p.dir))
+    )
+    if (nearbyGenRef.current !== gen) return
+
+    const items = points
+      .map((p, i) => ({
+        lat: p.lat, lon: p.lon, dir: p.dir, cityName: p.dir,
+        weather: results[i].status === 'fulfilled' ? results[i].value : null,
+        info:    results[i].status === 'fulfilled'
+          ? getWeatherInfo(results[i].value.current.weather_code) : null,
+      }))
+      .filter(item => item.weather && item.info)
+
+    setNearbyWeather(items)
+    setNearbyLoading(false)
+
+    // Lazily resolve city names via reverse geocoding
+    for (let i = 0; i < items.length; i++) {
+      if (nearbyGenRef.current !== gen) return
+      const name = await reverseGeocode(items[i].lat, items[i].lon)
+      if (name) setNearbyWeather(prev => prev.map((x, j) => j === i ? { ...x, cityName: name } : x))
+      await new Promise(r => setTimeout(r, 150))
+    }
+  }
+
+  const selectNearby = async (item) => {
+    setLoading(true); setError(null); setSuggestions([])
+    try {
+      const { weather: data, aqi: aqiData } = await loadWeatherAndAqi(
+        item.lat.toFixed(4), item.lon.toFixed(4), item.cityName
+      )
+      applyWeather({ ...data, location: item.cityName }, aqiData, item.cityName)
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (weather) fetchNearbyWeather(weather.latitude, weather.longitude)
+    else setNearbyWeather([])
+  }, [weather])
+
   // ── Derived values ───────────────────────────────────
   const current = weather?.current
   const daily   = weather?.daily
@@ -338,6 +421,10 @@ export default function App() {
         rain: hourly.precipitation_probability[hourlyStartIdx + i] ?? 0,
       }))
     : []
+
+  const filteredNearby = nearbyFilter === 'all'
+    ? nearbyWeather
+    : nearbyWeather.filter(item => item.info?.bg === nearbyFilter)
 
   return (
     <div className={`app ${info?.bg ?? ''}`}>
@@ -367,9 +454,7 @@ export default function App() {
                 <div className="pills-row" aria-label="Búsquedas recientes">
                   <span className="pills-label">Recientes</span>
                   {history.map(city => (
-                    <button key={city} type="button" className="history-pill" onClick={() => searchCity(city)}>
-                      {city}
-                    </button>
+                    <button key={city} type="button" className="history-pill" onClick={() => searchCity(city)}>{city}</button>
                   ))}
                 </div>
               )}
@@ -378,8 +463,7 @@ export default function App() {
                   <span className="pills-label">Favoritos</span>
                   {favorites.map(fav => (
                     <button key={`${fav.lat},${fav.lon}`} type="button" className="history-pill fav-pill" onClick={() => searchFavorite(fav)}>
-                      <Star size={11} className="fav-pill-star" />
-                      {fav.label}
+                      <Star size={11} className="fav-pill-star" />{fav.label}
                     </button>
                   ))}
                 </div>
@@ -502,22 +586,13 @@ export default function App() {
                 <div className="aqi-card">
                   <div className="aqi-header">
                     <span className="aqi-title">
-                      <Leaf size={14} strokeWidth={2} />
-                      Calidad del aire
+                      <Leaf size={14} strokeWidth={2} />Calidad del aire
                     </span>
-                    <span className="aqi-badge" style={{ color: aqiInfo.color, background: aqiInfo.bg }}>
-                      {aqiInfo.label}
-                    </span>
+                    <span className="aqi-badge" style={{ color: aqiInfo.color, background: aqiInfo.bg }}>{aqiInfo.label}</span>
                     <span className="aqi-num">{aqi.value} AQI</span>
                   </div>
                   <div className="aqi-bar-track">
-                    <div
-                      className="aqi-bar-fill"
-                      style={{
-                        width: `${Math.min(100, (aqi.value / 300) * 100)}%`,
-                        background: aqiInfo.color,
-                      }}
-                    />
+                    <div className="aqi-bar-fill" style={{ width: `${Math.min(100, (aqi.value / 300) * 100)}%`, background: aqiInfo.color }} />
                   </div>
                 </div>
               </div>
@@ -525,12 +600,7 @@ export default function App() {
 
             {next24.length > 0 && (
               <div className="hourly-section">
-                <button
-                  type="button"
-                  className="hourly-toggle"
-                  onClick={() => setHourlyOpen(o => !o)}
-                  aria-expanded={hourlyOpen}
-                >
+                <button type="button" className="hourly-toggle" onClick={() => setHourlyOpen(o => !o)} aria-expanded={hourlyOpen}>
                   <span>Próximas 24 horas</span>
                   <span className="toggle-arrow">{hourlyOpen ? '▲' : '▼'}</span>
                 </button>
@@ -544,10 +614,7 @@ export default function App() {
                           <span className="hourly-time">{formatHour(t)}</span>
                           <span className="hourly-emoji"><WeatherIcon name={hInfo.icon} size={20} /></span>
                           <span className="hourly-temp">{Math.round(hourly.temperature_2m[idx])}°</span>
-                          <span className="hourly-rain">
-                            <Droplets size={11} strokeWidth={2} />
-                            {hourly.precipitation_probability[idx] ?? 0}%
-                          </span>
+                          <span className="hourly-rain"><Droplets size={11} strokeWidth={2} />{hourly.precipitation_probability[idx] ?? 0}%</span>
                         </div>
                       )
                     })}
@@ -564,17 +631,12 @@ export default function App() {
                 {daily.time.map((day, i) => {
                   const dayInfo = getWeatherInfo(daily.weather_code[i])
                   return (
-                    <div
-                      key={day}
-                      className="forecast-day"
-                      aria-label={`${i === 0 ? 'Hoy' : getDayName(day)}: ${dayInfo.label}, máxima ${Math.round(daily.temperature_2m_max[i])} grados, mínima ${Math.round(daily.temperature_2m_min[i])} grados`}
+                    <div key={day} className="forecast-day"
+                      aria-label={`${i === 0 ? 'Hoy' : getDayName(day)}: ${dayInfo.label}, máx ${Math.round(daily.temperature_2m_max[i])}°, mín ${Math.round(daily.temperature_2m_min[i])}°`}
                     >
                       <span className="day-name">{i === 0 ? 'Hoy' : getDayName(day)}</span>
                       <span className="day-emoji"><WeatherIcon name={dayInfo.icon} size={22} /></span>
-                      <span className="day-rain">
-                        <Droplets size={13} strokeWidth={2} />
-                        {daily.precipitation_probability_max[i] ?? 0}%
-                      </span>
+                      <span className="day-rain"><Droplets size={13} strokeWidth={2} />{daily.precipitation_probability_max[i] ?? 0}%</span>
                       <div className="day-temps">
                         <span className="day-max">{Math.round(daily.temperature_2m_max[i])}°</span>
                         <span className="day-min">{Math.round(daily.temperature_2m_min[i])}°</span>
@@ -584,6 +646,62 @@ export default function App() {
                 })}
               </div>
             </div>
+
+            {/* Tiempo en los alrededores */}
+            {(nearbyWeather.length > 0 || nearbyLoading) && (
+              <div className="nearby-section">
+                <h2>Tiempo en los alrededores</h2>
+
+                {nearbyWeather.length > 0 && (
+                  <div className="nearby-filters">
+                    {NEARBY_FILTERS.map(f => {
+                      const count = f.key === 'all'
+                        ? nearbyWeather.length
+                        : nearbyWeather.filter(x => x.info?.bg === f.key).length
+                      if (count === 0 && f.key !== 'all') return null
+                      return (
+                        <button
+                          key={f.key}
+                          type="button"
+                          className={`nearby-filter${nearbyFilter === f.key ? ' nearby-filter--active' : ''}`}
+                          onClick={() => setNearbyFilter(f.key)}
+                        >
+                          {f.icon && <WeatherIcon name={f.icon} size={13} />}
+                          {f.label}
+                          <span className="nearby-filter-count">{count}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {nearbyLoading && nearbyWeather.length === 0 ? (
+                  <div className="nearby-loading">
+                    <span className="spinner" />
+                    Buscando tiempo cercano...
+                  </div>
+                ) : filteredNearby.length === 0 ? (
+                  <p className="nearby-empty">No hay {FILTER_EMPTY[nearbyFilter]} en los alrededores</p>
+                ) : (
+                  <div className="nearby-list">
+                    {filteredNearby.map((item, i) => (
+                      <button
+                        key={`${item.dir}-${i}`}
+                        type="button"
+                        className="nearby-card"
+                        onClick={() => selectNearby(item)}
+                      >
+                        <WeatherIcon name={item.info.icon} size={30} />
+                        <span className="nearby-city">{item.cityName}</span>
+                        <span className="nearby-temp">{Math.round(item.weather.current.temperature_2m)}°</span>
+                        <span className="nearby-condition">{item.info.label}</span>
+                        <span className="nearby-dir">{item.dir}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <WeatherMap
               lat={weather.latitude}
