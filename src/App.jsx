@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import {
+  Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning,
+  MapPin, Clock, Star, Globe, Sunrise, Sunset, Leaf, Droplets, Thermometer, Wind, Zap,
+} from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -138,6 +142,22 @@ async function loadWeatherAndAqi(lat, lon, displayName) {
   }
 }
 
+// ── Weather icon component ────────────────────────────────
+const W_ICONS = {
+  Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning,
+}
+function WeatherIcon({ name, size = 24, className = '' }) {
+  const I = W_ICONS[name] ?? Cloud
+  return <I size={size} className={className} strokeWidth={1.5} />
+}
+
+// ── Alert icon component ──────────────────────────────────
+const A_ICONS = { Zap, Thermometer, Wind }
+function AlertIcon({ name, size = 16 }) {
+  const I = A_ICONS[name] ?? Zap
+  return <I size={size} strokeWidth={2} />
+}
+
 // ── TempChart component ───────────────────────────────────
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -146,7 +166,7 @@ function ChartTooltip({ active, payload, label }) {
       <p className="chart-tooltip-label">{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.stroke, margin: '2px 0' }}>
-          {p.name === 'Temp' ? `🌡️ ${p.value}°C` : `💧 ${p.value}%`}
+          {p.name === 'Temp' ? `${p.value}°C` : `${p.value}%`}
         </p>
       ))}
     </div>
@@ -190,22 +210,8 @@ function TempChart({ data }) {
               tickFormatter={v => `${v}°`}
             />
             <Tooltip content={<ChartTooltip />} />
-            <Area
-              type="monotone"
-              dataKey="temp"
-              stroke="rgba(255,255,255,0.9)"
-              strokeWidth={2}
-              fill="url(#tempGrad)"
-              name="Temp"
-            />
-            <Area
-              type="monotone"
-              dataKey="rain"
-              stroke="rgba(100,160,255,0.8)"
-              strokeWidth={1.5}
-              fill="url(#rainGrad)"
-              name="Lluvia"
-            />
+            <Area type="monotone" dataKey="temp"  stroke="rgba(255,255,255,0.9)" strokeWidth={2}   fill="url(#tempGrad)" name="Temp"   />
+            <Area type="monotone" dataKey="rain"  stroke="rgba(100,160,255,0.8)" strokeWidth={1.5} fill="url(#rainGrad)" name="Lluvia" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -251,13 +257,11 @@ export default function App() {
   const [favorites, setFavorites]     = useState(loadFavorites)
   const [hourlyOpen, setHourlyOpen]   = useState(false)
 
-  // ── History ──────────────────────────────────────────
   const addToHistory = (cityName) => {
     const next = [cityName, ...history.filter(h => h !== cityName)].slice(0, 5)
     setHistory(next); saveHistory(next)
   }
 
-  // ── Favorites ────────────────────────────────────────
   const isFavorite = (lat, lon) =>
     favorites.some(f => f.lat === String(lat) && f.lon === String(lon))
 
@@ -283,7 +287,6 @@ export default function App() {
     finally { setLoading(false) }
   }
 
-  // ── Search ───────────────────────────────────────────
   const applyWeather = (data, aqiData, cityLabel) => {
     setWeather(data); setAqi(aqiData); addToHistory(cityLabel); setQuery(''); setSuggestions([])
     setHourlyOpen(false)
@@ -326,8 +329,8 @@ export default function App() {
   const hourlyStartIdx = hourly ? Math.max(0, hourly.time.indexOf(weather.current.time)) : 0
   const next24 = hourly ? hourly.time.slice(hourlyStartIdx, hourlyStartIdx + 24) : []
 
-  const starred  = weather ? isFavorite(weather.latitude, weather.longitude) : false
-  const aqiInfo  = aqi?.value != null ? getAqiInfo(aqi.value) : null
+  const starred   = weather ? isFavorite(weather.latitude, weather.longitude) : false
+  const aqiInfo   = aqi?.value != null ? getAqiInfo(aqi.value) : null
   const chartData = hourly && next24.length > 0
     ? next24.map((t, i) => ({
         hour: formatHour(t),
@@ -358,7 +361,6 @@ export default function App() {
             </button>
           </form>
 
-          {/* Recientes + Favoritos */}
           {(history.length > 0 || favorites.length > 0) && !loading && (
             <div className="pills-area">
               {history.length > 0 && (
@@ -376,7 +378,8 @@ export default function App() {
                   <span className="pills-label">Favoritos</span>
                   {favorites.map(fav => (
                     <button key={`${fav.lat},${fav.lon}`} type="button" className="history-pill fav-pill" onClick={() => searchFavorite(fav)}>
-                      ⭐ {fav.label}
+                      <Star size={11} className="fav-pill-star" />
+                      {fav.label}
                     </button>
                   ))}
                 </div>
@@ -385,7 +388,6 @@ export default function App() {
           )}
         </header>
 
-        {/* Selector de ciudad */}
         {suggestions.length > 0 && (
           <div className="suggestions-box" role="listbox" aria-label="Selecciona una ubicación">
             <p className="suggestions-title">¿A cuál te refieres?</p>
@@ -402,7 +404,7 @@ export default function App() {
 
         {!weather && !loading && !error && suggestions.length === 0 && (
           <div className="placeholder">
-            <span className="placeholder-emoji" aria-hidden="true">🌍</span>
+            <Globe size={72} className="placeholder-icon" strokeWidth={1} />
             <p>Escribe una ciudad para ver el tiempo</p>
           </div>
         )}
@@ -410,72 +412,74 @@ export default function App() {
         {weather && !loading && (
           <main className="dashboard">
 
-            {/* Alert banner */}
             {alert && (
               <div className={`alert-banner alert-${alert.level}`} role="alert">
+                <AlertIcon name={alert.icon} size={16} />
                 {alert.msg}
               </div>
             )}
 
-            {/* Location bar */}
             <div className="location-bar">
               <div className="location-left">
-                <span className="location-name">📍 {formatLocation(weather.location)}</span>
+                <span className="location-name">
+                  <MapPin size={14} strokeWidth={2} />
+                  {formatLocation(weather.location)}
+                </span>
                 <button
                   type="button"
                   className={`fav-btn ${starred ? 'fav-btn--active' : ''}`}
                   onClick={toggleFavorite}
                   aria-label={starred ? 'Quitar de favoritos' : 'Añadir a favoritos'}
                 >
-                  {starred ? '⭐' : '☆'}
+                  <Star size={17} strokeWidth={2} />
                 </button>
               </div>
               <span className="location-meta">
-                🕐 {getLocalTime(weather.timezone)}
+                <Clock size={12} strokeWidth={2} />
+                {getLocalTime(weather.timezone)}
                 <span className="separator">·</span>
                 Actualizado a las {formatUpdatedAt(weather.current.time, weather.timezone)}
               </span>
             </div>
 
-            {/* Main card */}
             <div className="main-card" aria-label={`${info.label}, ${Math.round(current.temperature_2m)} grados`}>
-              <span className="weather-emoji" aria-hidden="true">{info.emoji}</span>
+              <span className="weather-emoji" aria-hidden="true">
+                <WeatherIcon name={info.icon} size={88} />
+              </span>
               <div className="temp-block">
                 <span className="temperature">{Math.round(current.temperature_2m)}°C</span>
                 <span className="condition">{info.label}</span>
               </div>
             </div>
 
-            {/* Amanecer / Atardecer */}
             {daily?.sunrise?.[0] && (
               <div className="sun-row">
                 <div className="sun-card">
-                  <span className="sun-icon" aria-hidden="true">🌅</span>
+                  <span className="sun-icon"><Sunrise size={28} strokeWidth={1.5} /></span>
                   <span className="sun-label">Amanecer</span>
                   <span className="sun-time">{formatSunTime(daily.sunrise[0])}</span>
                 </div>
                 <div className="sun-card">
-                  <span className="sun-icon" aria-hidden="true">🌇</span>
+                  <span className="sun-icon"><Sunset size={28} strokeWidth={1.5} /></span>
                   <span className="sun-label">Atardecer</span>
                   <span className="sun-time">{formatSunTime(daily.sunset[0])}</span>
                 </div>
               </div>
             )}
 
-            {/* Metrics */}
             <div className="metrics-grid">
               <div className="metric-card" aria-label={`Sensación térmica: ${Math.round(current.apparent_temperature)} grados`}>
-                <span className="metric-icon" aria-hidden="true">🌡️</span>
+                <span className="metric-icon"><Thermometer size={22} strokeWidth={1.5} /></span>
                 <span className="metric-label">Sensación</span>
                 <span className="metric-value">{Math.round(current.apparent_temperature)}°C</span>
               </div>
               <div className="metric-card" aria-label={`Humedad: ${current.relative_humidity_2m} por ciento`}>
-                <span className="metric-icon" aria-hidden="true">💧</span>
+                <span className="metric-icon"><Droplets size={22} strokeWidth={1.5} /></span>
                 <span className="metric-label">Humedad</span>
                 <span className="metric-value">{current.relative_humidity_2m}%</span>
               </div>
-              <div className="metric-card" aria-label={`Viento: ${Math.round(current.wind_speed_10m)} km/h dirección ${getWindDirection(current.wind_direction_10m)}`}>
-                <span className="metric-icon" aria-hidden="true">💨</span>
+              <div className="metric-card" aria-label={`Viento: ${Math.round(current.wind_speed_10m)} km/h`}>
+                <span className="metric-icon"><Wind size={22} strokeWidth={1.5} /></span>
                 <span className="metric-label">Viento</span>
                 <span className="metric-value">{Math.round(current.wind_speed_10m)} km/h {getWindDirection(current.wind_direction_10m)}</span>
               </div>
@@ -484,7 +488,7 @@ export default function App() {
                 const uvInfo = getUvInfo(uv)
                 return (
                   <div className="metric-card" aria-label={`Índice UV: ${uv}, riesgo ${uvInfo.label}`}>
-                    <span className="metric-icon" aria-hidden="true">🔆</span>
+                    <span className="metric-icon"><Sun size={22} strokeWidth={1.5} /></span>
                     <span className="metric-label">Índice UV</span>
                     <span className="metric-value">{uv}</span>
                     <span className="uv-badge" style={{ color: uvInfo.color }}>{uvInfo.label}</span>
@@ -493,12 +497,14 @@ export default function App() {
               })()}
             </div>
 
-            {/* Calidad del aire */}
             {aqiInfo && aqi?.value != null && (
               <div className="aqi-section">
                 <div className="aqi-card">
                   <div className="aqi-header">
-                    <span className="aqi-title">🍃 Calidad del aire</span>
+                    <span className="aqi-title">
+                      <Leaf size={14} strokeWidth={2} />
+                      Calidad del aire
+                    </span>
                     <span className="aqi-badge" style={{ color: aqiInfo.color, background: aqiInfo.bg }}>
                       {aqiInfo.label}
                     </span>
@@ -517,7 +523,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Previsión horaria 24h */}
             {next24.length > 0 && (
               <div className="hourly-section">
                 <button
@@ -537,9 +542,12 @@ export default function App() {
                       return (
                         <div key={t} className="hourly-item" role="listitem">
                           <span className="hourly-time">{formatHour(t)}</span>
-                          <span className="hourly-emoji" aria-hidden="true">{hInfo.emoji}</span>
+                          <span className="hourly-emoji"><WeatherIcon name={hInfo.icon} size={20} /></span>
                           <span className="hourly-temp">{Math.round(hourly.temperature_2m[idx])}°</span>
-                          <span className="hourly-rain">💧{hourly.precipitation_probability[idx] ?? 0}%</span>
+                          <span className="hourly-rain">
+                            <Droplets size={11} strokeWidth={2} />
+                            {hourly.precipitation_probability[idx] ?? 0}%
+                          </span>
                         </div>
                       )
                     })}
@@ -548,10 +556,8 @@ export default function App() {
               </div>
             )}
 
-            {/* Gráfico temperatura 24h */}
             {chartData.length > 0 && <TempChart data={chartData} />}
 
-            {/* 7-day forecast */}
             <div className="forecast">
               <h2>Próximos 7 días</h2>
               <div className="forecast-list">
@@ -561,12 +567,15 @@ export default function App() {
                     <div
                       key={day}
                       className="forecast-day"
-                      aria-label={`${i === 0 ? 'Hoy' : getDayName(day)}: ${dayInfo.label}, máxima ${Math.round(daily.temperature_2m_max[i])} grados, mínima ${Math.round(daily.temperature_2m_min[i])} grados, lluvia ${daily.precipitation_probability_max[i] ?? 0}%`}
+                      aria-label={`${i === 0 ? 'Hoy' : getDayName(day)}: ${dayInfo.label}, máxima ${Math.round(daily.temperature_2m_max[i])} grados, mínima ${Math.round(daily.temperature_2m_min[i])} grados`}
                     >
                       <span className="day-name">{i === 0 ? 'Hoy' : getDayName(day)}</span>
-                      <span className="day-emoji" aria-hidden="true">{dayInfo.emoji}</span>
-                      <span className="day-rain" aria-hidden="true">💧 {daily.precipitation_probability_max[i] ?? 0}%</span>
-                      <div className="day-temps" aria-hidden="true">
+                      <span className="day-emoji"><WeatherIcon name={dayInfo.icon} size={22} /></span>
+                      <span className="day-rain">
+                        <Droplets size={13} strokeWidth={2} />
+                        {daily.precipitation_probability_max[i] ?? 0}%
+                      </span>
+                      <div className="day-temps">
                         <span className="day-max">{Math.round(daily.temperature_2m_max[i])}°</span>
                         <span className="day-min">{Math.round(daily.temperature_2m_min[i])}°</span>
                       </div>
@@ -576,7 +585,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Mapa interactivo */}
             <WeatherMap
               lat={weather.latitude}
               lon={weather.longitude}
@@ -586,7 +594,6 @@ export default function App() {
           </main>
         )}
 
-        {/* Attribution footer */}
         <footer className="attribution">
           Datos: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
           <span className="separator">·</span>

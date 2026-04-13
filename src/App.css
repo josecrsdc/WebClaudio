@@ -179,7 +179,10 @@ header h1 {
   margin-bottom: 1rem;
   font-size: 0.92rem;
   font-weight: 500;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   animation: fadeIn 0.3s ease;
 }
 .alert-danger  {
@@ -247,9 +250,9 @@ header h1 {
   flex-shrink: 0;
 }
 .hourly-time  { font-size: 0.75rem; color: var(--text-muted); }
-.hourly-emoji { font-size: 1.25rem; }
+.hourly-emoji { display: flex; align-items: center; justify-content: center; }
 .hourly-temp  { font-size: 0.88rem; font-weight: 600; }
-.hourly-rain  { font-size: 0.72rem; color: #90caf9; }
+.hourly-rain  { font-size: 0.72rem; color: #90caf9; display: flex; align-items: center; gap: 2px; }
 
 /* ── Attribution footer (tarea 22) ──────────────────── */
 .attribution {
@@ -334,7 +337,7 @@ header h1 {
   color: var(--text-muted);
   font-size: 1rem;
 }
-.placeholder-emoji { font-size: 4.5rem; }
+.placeholder-icon { opacity: 0.4; }
 
 /* ── Location bar (tareas 13 y 14) ───────────────────── */
 .location-bar {
@@ -349,6 +352,9 @@ header h1 {
 .location-name {
   color: var(--text-muted);
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .location-meta {
@@ -387,7 +393,7 @@ header h1 {
   margin-bottom: 1rem;
 }
 
-.weather-emoji { font-size: 5.5rem; line-height: 1; }
+.weather-emoji { display: inline-block; line-height: 1; }
 
 .temp-block {
   display: flex;
@@ -428,7 +434,7 @@ header h1 {
 }
 .metric-card:hover { background: rgba(255,255,255,0.15); }
 
-.metric-icon  { font-size: 1.5rem; }
+.metric-icon  { display: flex; justify-content: center; align-items: center; height: 1.8rem; }
 .metric-label {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -468,8 +474,8 @@ header h1 {
 .forecast-day:last-child { border-bottom: none; }
 
 .day-name  { font-size: 0.95rem; text-transform: capitalize; }
-.day-emoji { font-size: 1.35rem; text-align: center; }
-.day-rain  { font-size: 0.82rem; color: #90caf9; text-align: right; }
+.day-emoji { display: flex; align-items: center; justify-content: center; }
+.day-rain  { font-size: 0.82rem; color: #90caf9; display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
 
 .day-temps {
   display: flex;
@@ -501,7 +507,7 @@ header h1 {
   text-align: center;
 }
 
-.sun-icon  { font-size: 1.6rem; }
+.sun-icon  { display: flex; align-items: center; justify-content: center; }
 .sun-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .sun-time  { font-size: 1.15rem; font-weight: 600; }
 
@@ -530,6 +536,9 @@ header h1 {
   letter-spacing: 0.08em;
   color: var(--text-muted);
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .aqi-badge {
@@ -895,6 +904,17 @@ header h1 {
   padding-right: 0.5rem;
 }
 .forecast-day:hover { background: rgba(255,255,255,0.07); }
+
+/* ── Star / favorite icon ─────────────────────────────── */
+.fav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fav-btn svg             { fill: none; stroke: currentColor; }
+.fav-btn--active svg     { fill: #FFD700; stroke: #FFD700; }
+
+.fav-pill-star           { flex-shrink: 0; fill: #FFD700; stroke: #FFD700; }
 
 /* ── Respect reduced motion ───────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
