@@ -1,13 +1,29 @@
 import { useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon   from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import {
   getWeatherInfo, getWindDirection, getDayName, formatLocation,
-  getUvInfo, getLocalTime, formatUpdatedAt, getAlert, formatHour
+  getUvInfo, getLocalTime, formatUpdatedAt, getAlert, formatHour,
+  formatSunTime, getAqiInfo
 } from './utils/weather'
 import './App.css'
 
+// ── Leaflet icon fix for Vite ────────────────────────────
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl:       markerIcon,
+  shadowUrl:     markerShadow,
+})
+
 // ── Caché en memoria ─────────────────────────────────────
 const weatherCache = new Map()
-const CACHE_TTL = 10 * 60 * 1000
+const aqiCache     = new Map()
+const CACHE_TTL    = 10 * 60 * 1000
 
 // ── localStorage helpers ─────────────────────────────────
 function loadHistory() {
@@ -42,7 +58,7 @@ async function fetchGeoSuggestions(locationName) {
   return data
 }
 
-// ── Fetch weather con caché (tarea 20: +hourly) ──────────
+// ── Fetch weather con caché ───────────────────────────────
 async function fetchWeatherForLocation(lat, lon, displayName) {
   const cacheKey = `${parseFloat(lat).toFixed(2)},${parseFloat(lon).toFixed(2)}`
   const cached = weatherCache.get(cacheKey)
@@ -57,7 +73,7 @@ async function fetchWeatherForLocation(lat, lon, displayName) {
       `?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,uv_index` +
       `&hourly=temperature_2m,weather_code,precipitation_probability` +
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset` +
       `&forecast_days=7&timezone=auto`,
       { signal: controller.signal }
     )
@@ -76,10 +92,158 @@ async function fetchWeatherForLocation(lat, lon, displayName) {
   return result
 }
 
+// ── Fetch AQI con caché (fallo silencioso) ────────────────
+async function fetchAqiForLocation(lat, lon) {
+  const cacheKey = `aqi-${parseFloat(lat).toFixed(2)},${parseFloat(lon).toFixed(2)}`
+  const cached = aqiCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+    let res
+    try {
+      res = await fetch(
+        `https://air-quality-api.open-meteo.com/v1/air-quality` +
+        `?latitude=${lat}&longitude=${lon}&hourly=us_aqi&timezone=auto&forecast_days=1`,
+        { signal: controller.signal }
+      )
+    } finally { clearTimeout(timeout) }
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    if (!data?.hourly?.us_aqi?.length) return null
+    const now = new Date()
+    const pad = n => String(n).padStart(2, '0')
+    const currentHour = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`
+    const idx = data.hourly.time.indexOf(currentHour)
+    const value = idx >= 0 ? data.hourly.us_aqi[idx] : data.hourly.us_aqi[0]
+    const result = { value }
+    aqiCache.set(cacheKey, { data: result, ts: Date.now() })
+    return result
+  } catch {
+    return null
+  }
+}
+
+// ── Coordinator: weather + AQI en paralelo ────────────────
+async function loadWeatherAndAqi(lat, lon, displayName) {
+  const [weatherResult, aqiResult] = await Promise.allSettled([
+    fetchWeatherForLocation(lat, lon, displayName),
+    fetchAqiForLocation(lat, lon),
+  ])
+  if (weatherResult.status === 'rejected') throw weatherResult.reason
+  return {
+    weather: weatherResult.value,
+    aqi: aqiResult.status === 'fulfilled' ? aqiResult.value : null,
+  }
+}
+
+// ── TempChart component ───────────────────────────────────
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="chart-tooltip">
+      <p className="chart-tooltip-label">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ color: p.stroke, margin: '2px 0' }}>
+          {p.name === 'Temp' ? `🌡️ ${p.value}°C` : `💧 ${p.value}%`}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+function TempChart({ data }) {
+  if (!data.length) return null
+  const temps   = data.map(d => d.temp)
+  const minTemp = Math.min(...temps) - 2
+  const maxTemp = Math.max(...temps) + 2
+  return (
+    <div className="chart-section">
+      <h2>Temperatura próximas 24h</h2>
+      <div className="chart-wrapper">
+        <ResponsiveContainer width="100%" height={160}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="rgba(255,255,255,0.5)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="rgba(255,255,255,0.1)" stopOpacity={0.1} />
+              </linearGradient>
+              <linearGradient id="rainGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="rgba(100,160,255,0.5)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="rgba(100,160,255,0.1)" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <XAxis
+              dataKey="hour"
+              tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              interval={3}
+            />
+            <YAxis
+              domain={[minTemp, maxTemp]}
+              tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={v => `${v}°`}
+            />
+            <Tooltip content={<ChartTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="temp"
+              stroke="rgba(255,255,255,0.9)"
+              strokeWidth={2}
+              fill="url(#tempGrad)"
+              name="Temp"
+            />
+            <Area
+              type="monotone"
+              dataKey="rain"
+              stroke="rgba(100,160,255,0.8)"
+              strokeWidth={1.5}
+              fill="url(#rainGrad)"
+              name="Lluvia"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+// ── WeatherMap component ──────────────────────────────────
+function WeatherMap({ lat, lon, cityName }) {
+  return (
+    <div className="map-section">
+      <h2>Ubicación</h2>
+      <div className="map-wrapper">
+        <MapContainer
+          key={`${lat},${lon}`}
+          center={[lat, lon]}
+          zoom={11}
+          scrollWheelZoom={false}
+          className="leaflet-map"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Marker position={[lat, lon]}>
+            <Popup>{cityName}</Popup>
+          </Marker>
+        </MapContainer>
+      </div>
+    </div>
+  )
+}
+
 // ────────────────────────────────────────────────────────
 export default function App() {
   const [query, setQuery]             = useState('')
   const [weather, setWeather]         = useState(null)
+  const [aqi, setAqi]                 = useState(null)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState(null)
   const [suggestions, setSuggestions] = useState([])
@@ -113,15 +277,15 @@ export default function App() {
   const searchFavorite = async (fav) => {
     setLoading(true); setError(null); setSuggestions([])
     try {
-      const data = await fetchWeatherForLocation(fav.lat, fav.lon, fav.label)
-      setWeather(data); setQuery(''); setSuggestions([])
+      const { weather: data, aqi: aqiData } = await loadWeatherAndAqi(fav.lat, fav.lon, fav.label)
+      setWeather(data); setAqi(aqiData); setQuery(''); setSuggestions([])
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }
   }
 
   // ── Search ───────────────────────────────────────────
-  const applyWeather = (data, cityLabel) => {
-    setWeather(data); addToHistory(cityLabel); setQuery(''); setSuggestions([])
+  const applyWeather = (data, aqiData, cityLabel) => {
+    setWeather(data); setAqi(aqiData); addToHistory(cityLabel); setQuery(''); setSuggestions([])
     setHourlyOpen(false)
   }
 
@@ -131,8 +295,8 @@ export default function App() {
       const geoResults = await fetchGeoSuggestions(cityName)
       if (geoResults.length === 1) {
         const { lat, lon, display_name } = geoResults[0]
-        const data = await fetchWeatherForLocation(lat, lon, display_name)
-        applyWeather(data, cityName)
+        const { weather: data, aqi: aqiData } = await loadWeatherAndAqi(lat, lon, display_name)
+        applyWeather(data, aqiData, cityName)
       } else {
         setSuggestions(geoResults)
       }
@@ -146,8 +310,8 @@ export default function App() {
     setLoading(true); setError(null); setSuggestions([])
     try {
       const { lat, lon, display_name } = suggestion
-      const data = await fetchWeatherForLocation(lat, lon, display_name)
-      applyWeather(data, display_name.split(',')[0].trim())
+      const { weather: data, aqi: aqiData } = await loadWeatherAndAqi(lat, lon, display_name)
+      applyWeather(data, aqiData, display_name.split(',')[0].trim())
     } catch (err) { setError(err.message); setWeather(null) }
     finally { setLoading(false) }
   }
@@ -159,11 +323,18 @@ export default function App() {
   const info    = current ? getWeatherInfo(current.weather_code) : null
   const alert   = current ? getAlert(current) : null
 
-  // Próximas 24h: buscar índice de la hora actual y tomar 24 entradas
   const hourlyStartIdx = hourly ? Math.max(0, hourly.time.indexOf(weather.current.time)) : 0
   const next24 = hourly ? hourly.time.slice(hourlyStartIdx, hourlyStartIdx + 24) : []
 
-  const starred = weather ? isFavorite(weather.latitude, weather.longitude) : false
+  const starred  = weather ? isFavorite(weather.latitude, weather.longitude) : false
+  const aqiInfo  = aqi?.value != null ? getAqiInfo(aqi.value) : null
+  const chartData = hourly && next24.length > 0
+    ? next24.map((t, i) => ({
+        hour: formatHour(t),
+        temp: Math.round(hourly.temperature_2m[hourlyStartIdx + i]),
+        rain: hourly.precipitation_probability[hourlyStartIdx + i] ?? 0,
+      }))
+    : []
 
   return (
     <div className={`app ${info?.bg ?? ''}`}>
@@ -239,14 +410,14 @@ export default function App() {
         {weather && !loading && (
           <main className="dashboard">
 
-            {/* Alert banner (tarea 19) */}
+            {/* Alert banner */}
             {alert && (
               <div className={`alert-banner alert-${alert.level}`} role="alert">
                 {alert.msg}
               </div>
             )}
 
-            {/* Location bar con favorito (tareas 13, 14, 21) */}
+            {/* Location bar */}
             <div className="location-bar">
               <div className="location-left">
                 <span className="location-name">📍 {formatLocation(weather.location)}</span>
@@ -274,6 +445,22 @@ export default function App() {
                 <span className="condition">{info.label}</span>
               </div>
             </div>
+
+            {/* Amanecer / Atardecer */}
+            {daily?.sunrise?.[0] && (
+              <div className="sun-row">
+                <div className="sun-card">
+                  <span className="sun-icon" aria-hidden="true">🌅</span>
+                  <span className="sun-label">Amanecer</span>
+                  <span className="sun-time">{formatSunTime(daily.sunrise[0])}</span>
+                </div>
+                <div className="sun-card">
+                  <span className="sun-icon" aria-hidden="true">🌇</span>
+                  <span className="sun-label">Atardecer</span>
+                  <span className="sun-time">{formatSunTime(daily.sunset[0])}</span>
+                </div>
+              </div>
+            )}
 
             {/* Metrics */}
             <div className="metrics-grid">
@@ -306,7 +493,31 @@ export default function App() {
               })()}
             </div>
 
-            {/* Previsión horaria 24h (tarea 20) */}
+            {/* Calidad del aire */}
+            {aqiInfo && aqi?.value != null && (
+              <div className="aqi-section">
+                <div className="aqi-card">
+                  <div className="aqi-header">
+                    <span className="aqi-title">🍃 Calidad del aire</span>
+                    <span className="aqi-badge" style={{ color: aqiInfo.color, background: aqiInfo.bg }}>
+                      {aqiInfo.label}
+                    </span>
+                    <span className="aqi-num">{aqi.value} AQI</span>
+                  </div>
+                  <div className="aqi-bar-track">
+                    <div
+                      className="aqi-bar-fill"
+                      style={{
+                        width: `${Math.min(100, (aqi.value / 300) * 100)}%`,
+                        background: aqiInfo.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Previsión horaria 24h */}
             {next24.length > 0 && (
               <div className="hourly-section">
                 <button
@@ -337,6 +548,9 @@ export default function App() {
               </div>
             )}
 
+            {/* Gráfico temperatura 24h */}
+            {chartData.length > 0 && <TempChart data={chartData} />}
+
             {/* 7-day forecast */}
             <div className="forecast">
               <h2>Próximos 7 días</h2>
@@ -361,10 +575,18 @@ export default function App() {
                 })}
               </div>
             </div>
+
+            {/* Mapa interactivo */}
+            <WeatherMap
+              lat={weather.latitude}
+              lon={weather.longitude}
+              cityName={formatLocation(weather.location).split(',')[0].trim()}
+            />
+
           </main>
         )}
 
-        {/* Attribution footer (tarea 22) */}
+        {/* Attribution footer */}
         <footer className="attribution">
           Datos: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
           <span className="separator">·</span>

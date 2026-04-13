@@ -476,6 +476,159 @@ header h1 {
 .day-max { font-weight: 600; font-size: 0.95rem; }
 .day-min { color: var(--text-muted); font-size: 0.95rem; }
 
+/* ── Amanecer / Atardecer ─────────────────────────────── */
+.sun-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sun-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+}
+
+.sun-icon  { font-size: 1.6rem; }
+.sun-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.sun-time  { font-size: 1.15rem; font-weight: 600; }
+
+/* ── Calidad del aire (AQI) ───────────────────────────── */
+.aqi-section { margin-bottom: 1rem; }
+
+.aqi-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  padding: 1.25rem 1.5rem;
+}
+
+.aqi-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.aqi-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.aqi-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.25rem 0.7rem;
+  border-radius: 50px;
+}
+
+.aqi-num {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.aqi-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.aqi-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+/* ── Temperatura 24h chart ────────────────────────────── */
+.chart-section {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  padding: 1.75rem 1.5rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.chart-section h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.chart-wrapper { width: 100%; }
+
+.chart-tooltip {
+  background: rgba(10, 22, 40, 0.9);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  backdrop-filter: blur(12px);
+}
+
+.chart-tooltip-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+/* ── Mapa interactivo ─────────────────────────────────── */
+.map-section {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  padding: 1.75rem 1.5rem 0;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.map-section h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.map-wrapper {
+  border-radius: calc(var(--radius) - 4px);
+  overflow: hidden;
+  margin: 0 -1.5rem;
+}
+
+.leaflet-map {
+  height: 240px;
+  width: 100%;
+}
+
+/* Leaflet popup glassmorphism override */
+.leaflet-popup-content-wrapper {
+  background: rgba(10, 22, 40, 0.88) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px);
+}
+.leaflet-popup-tip { background: rgba(10, 22, 40, 0.88) !important; }
+.leaflet-popup-content { color: var(--text) !important; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 0.9rem; }
+
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 640px) {
   .container { padding: 1.5rem 1rem 2rem; }
@@ -513,6 +666,10 @@ header h1 {
   .day-rain  { font-size: 0.78rem; }
   .day-max, .day-min { font-size: 0.88rem; }
   .day-temps { min-width: 52px; gap: 0.4rem; }
+
+  .leaflet-map { height: 190px; }
+  .chart-section { padding: 1.25rem 1rem 1rem; }
+  .aqi-card { padding: 1rem 1.25rem; }
 }
 
 /* Tarea 17: pantallas muy pequeñas (320px) */
@@ -525,4 +682,8 @@ header h1 {
 
   .location-meta { flex-direction: column; gap: 0.1rem; }
   .separator { display: none; }
+
+  .leaflet-map { height: 160px; }
+  .sun-card { padding: 0.75rem 1rem; }
+  .sun-time { font-size: 1rem; }
 }

@@ -72,6 +72,20 @@ export function getUvInfo(uv) {
   return          { label: 'Extremo',   color: '#9c27b0' }
 }
 
+export function formatSunTime(isoStr) {
+  return isoStr ? isoStr.slice(11, 16) : '--:--'
+}
+
+export function getAqiInfo(value) {
+  if (value == null)  return { label: 'Sin datos',        color: 'var(--text-muted)' }
+  if (value <= 50)    return { label: 'Buena',            color: '#4caf50', bg: 'rgba(76,175,80,0.15)' }
+  if (value <= 100)   return { label: 'Moderada',         color: '#ffeb3b', bg: 'rgba(255,235,59,0.15)' }
+  if (value <= 150)   return { label: 'No saludable*',    color: '#ff9800', bg: 'rgba(255,152,0,0.15)' }
+  if (value <= 200)   return { label: 'No saludable',     color: '#f44336', bg: 'rgba(244,67,54,0.15)' }
+  if (value <= 300)   return { label: 'Muy no saludable', color: '#9c27b0', bg: 'rgba(156,39,176,0.15)' }
+  return               { label: 'Peligrosa',             color: '#7b1fa2', bg: 'rgba(123,31,162,0.15)' }
+}
+
 // ── Local time in city timezone (tarea 13) ───────────────
 export function getLocalTime(timezone) {
   return new Date().toLocaleTimeString('es-ES', {
