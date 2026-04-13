@@ -21,6 +21,7 @@
   background: linear-gradient(145deg, #1a1a4e 0%, #0d1b3e 60%, #0a1628 100%);
   transition: background 0.6s ease;
   color: var(--text);
+  position: relative;
 }
 .app.clear  { background: linear-gradient(145deg, #1565c0 0%, #0d47a1 50%, #01579b 100%); }
 .app.cloudy { background: linear-gradient(145deg, #455a64 0%, #37474f 50%, #263238 100%); }
@@ -33,6 +34,8 @@
   max-width: 860px;
   margin: 0 auto;
   padding: 2rem 1.5rem 3rem;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Header & search ──────────────────────────────────── */
@@ -367,7 +370,7 @@ header h1 {
 }
 
 /* ── Dashboard ────────────────────────────────────────── */
-.dashboard { animation: fadeIn 0.4s ease; }
+.dashboard { /* entrance handled by staggered children */ }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
 
 /* Main weather card */
@@ -687,4 +690,213 @@ header h1 {
   .leaflet-map { height: 160px; }
   .sun-card { padding: 0.75rem 1rem; }
   .sun-time { font-size: 1rem; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════════════ */
+
+/* ── Animated background gradient ─────────────────────── */
+.app,
+.app.clear, .app.cloudy, .app.rain, .app.snow, .app.storm {
+  background-size: 300% 300%;
+}
+
+.app { animation: gradient-shift 18s ease infinite; }
+
+@keyframes gradient-shift {
+  0%   { background-position: 0%   0%;   }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0%   0%;   }
+}
+
+/* ── Weather particles — rain ─────────────────────────── */
+.app.rain::before,
+.app.storm::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: repeating-linear-gradient(
+    170deg,
+    transparent 0,
+    transparent 5px,
+    rgba(147, 197, 253, 0.07) 5px,
+    rgba(147, 197, 253, 0.07) 6px
+  );
+  background-size: 14px 50px;
+  animation: rain-fall 0.55s linear infinite;
+}
+
+@keyframes rain-fall {
+  from { background-position: 0 -50px; }
+  to   { background-position: 6px 50px; }
+}
+
+/* ── Weather particles — lightning ───────────────────── */
+.app.storm::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: rgba(180, 210, 255, 0.14);
+  opacity: 0;
+  animation: lightning-flash 6s ease-in-out infinite;
+}
+
+@keyframes lightning-flash {
+  0%, 87%, 90%, 92%, 100% { opacity: 0; }
+  88%, 91%                 { opacity: 1; }
+}
+
+/* ── Weather particles — snow ─────────────────────────── */
+.app.snow::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.45) 1.5px, transparent 1.5px),
+    radial-gradient(circle, rgba(255,255,255,0.30) 1px,   transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.20) 2px,   transparent 2px);
+  background-size: 45px 45px, 28px 60px, 65px 90px;
+  background-position: 0 0, 14px 30px, 32px 15px;
+  animation: snow-drift 7s linear infinite;
+}
+
+@keyframes snow-drift {
+  from { background-position: 0 -45px, 14px -30px, 32px -90px; }
+  to   { background-position: 5px 45px, 19px 60px, 37px 90px;  }
+}
+
+/* ── Weather particles — sun glow ─────────────────────── */
+.app.clear::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at 65% 25%,
+    rgba(255, 220, 80, 0.09) 0%,
+    transparent 55%
+  );
+  animation: sun-glow-pulse 5s ease-in-out infinite;
+}
+
+@keyframes sun-glow-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.1); }
+}
+
+/* ── Staggered dashboard card entrance ────────────────── */
+.dashboard > * {
+  animation: slide-up 0.45s ease both;
+}
+.dashboard > :nth-child(1) { animation-delay: 0.00s; }
+.dashboard > :nth-child(2) { animation-delay: 0.07s; }
+.dashboard > :nth-child(3) { animation-delay: 0.14s; }
+.dashboard > :nth-child(4) { animation-delay: 0.21s; }
+.dashboard > :nth-child(5) { animation-delay: 0.28s; }
+.dashboard > :nth-child(6) { animation-delay: 0.35s; }
+.dashboard > :nth-child(7) { animation-delay: 0.42s; }
+.dashboard > :nth-child(8) { animation-delay: 0.49s; }
+.dashboard > :nth-child(9) { animation-delay: 0.56s; }
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Weather emoji animation ──────────────────────────── */
+.weather-emoji { display: inline-block; }
+
+.app.clear  .weather-emoji { animation: emoji-pulse 4s ease-in-out infinite; }
+.app.cloudy .weather-emoji { animation: emoji-drift 5s ease-in-out infinite; }
+.app.rain   .weather-emoji { animation: emoji-drop  2s ease-in-out infinite; }
+.app.snow   .weather-emoji { animation: emoji-float 3.5s ease-in-out infinite; }
+.app.storm  .weather-emoji { animation: emoji-flash 3s ease-in-out infinite; }
+
+@keyframes emoji-pulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 0 rgba(255,220,0,0)); }
+  50%       { transform: scale(1.06); filter: drop-shadow(0 0 18px rgba(255,220,0,0.5)); }
+}
+@keyframes emoji-drift {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(8px); }
+}
+@keyframes emoji-drop {
+  0%, 100% { transform: translateY(0); }
+  40%       { transform: translateY(10px); }
+  60%       { transform: translateY(5px); }
+}
+@keyframes emoji-float {
+  0%, 100% { transform: translateY(0)    rotate(-4deg); }
+  50%       { transform: translateY(-10px) rotate(4deg); }
+}
+@keyframes emoji-flash {
+  0%, 84%, 88%, 92%, 100% { opacity: 1;    }
+  86%, 90%                 { opacity: 0.2; }
+}
+
+/* ── Metric card hover lift ───────────────────────────── */
+.metric-card {
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.metric-card:hover {
+  background: rgba(255,255,255,0.18);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+/* ── AQI bar shimmer ──────────────────────────────────── */
+.aqi-bar-fill {
+  position: relative;
+  overflow: hidden;
+}
+.aqi-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,0.38) 50%,
+    transparent 100%
+  );
+  animation: bar-shimmer 2.4s ease-in-out infinite;
+}
+
+@keyframes bar-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+
+/* ── Sun card icon pulse ──────────────────────────────── */
+.sun-icon { display: inline-block; }
+.sun-card:first-child .sun-icon { animation: sunrise-bounce 3s ease-in-out infinite; }
+.sun-card:last-child  .sun-icon { animation: sunset-drift  4s ease-in-out infinite; }
+
+@keyframes sunrise-bounce {
+  0%, 100% { transform: scale(1)    translateY(0); }
+  50%       { transform: scale(1.15) translateY(-4px); }
+}
+@keyframes sunset-drift {
+  0%, 100% { transform: scale(1)   rotate(0deg); }
+  50%       { transform: scale(1.1) rotate(-8deg); }
+}
+
+/* ── Forecast day hover ───────────────────────────────── */
+.forecast-day {
+  border-radius: 10px;
+  transition: background 0.18s;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.forecast-day:hover { background: rgba(255,255,255,0.07); }
+
+/* ── Respect reduced motion ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
